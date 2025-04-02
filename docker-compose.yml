@@ -1,11 +1,47 @@
+# services:
+#   backend:
+#     build: 
+#       context: ./server
+#       dockerfile: Dockerfile
+#     platform: linux/amd64  # Specify platform for compatibility
+#     ports:
+#       - "8000:8000"
+#     depends_on:
+#       - mongo
+#     volumes:
+#       - ./server:/app
+#       - /app/node_modules
+#     environment:
+#       - MONGO_URI=mongodb://mongo:27017/travelblogger
 
+#   frontend:
+#     build: 
+#       context: ./client
+#       dockerfile: Dockerfile
+#     platform: linux/amd64  # Specify platform for compatibility
+#     ports:
+#       - "5173:5173"
+#     depends_on:
+#       - backend
+#     volumes:
+#       - ./client:/app
+#       - /app/node_modules
+
+#   mongo:
+#     image: mongo:latest
+#     container_name: mongo_container
+#     ports:
+#       - "27017:27017"
+#     volumes:
+#       - mongo-data:/data/db
+
+# volumes:
+#   mongo-data:
 
 services:
   backend:
-    build: 
-      context: ./server
-      dockerfile: Dockerfile
-    platform: linux/amd64  # Specify platform for compatibility
+    image: ${BACKEND_IMAGE}
+    platform: linux/amd64
     ports:
       - "8000:8000"
     depends_on:
@@ -17,17 +53,14 @@ services:
       - MONGO_URI=mongodb://mongo:27017/travelblogger
 
   frontend:
-    build: 
-      context: ./client
-      dockerfile: Dockerfile
-    platform: linux/amd64  # Specify platform for compatibility
+    image: ${FRONTEND_IMAGE}
+    platform: linux/amd64
     ports:
       - "5173:5173"
     depends_on:
       - backend
     volumes:
       - ./client:/app
-      # Exclude node_modules from volume mounting to prevent conflicts
       - /app/node_modules
 
   mongo:
