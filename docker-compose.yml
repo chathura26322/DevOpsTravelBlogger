@@ -38,34 +38,35 @@
 # volumes:
 #   mongo-data:
 
+version: '3.8'
 services:
   backend:
-    image: ${BACKEND_IMAGE}
-    platform: linux/amd64
+    build:
+      context: ./server
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
     depends_on:
       - mongo
     volumes:
       - ./server:/app
-      - /app/node_modules
     environment:
       - MONGO_URI=mongodb://mongo:27017/travelblogger
+      - ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET}
 
   frontend:
-    image: ${FRONTEND_IMAGE}
-    platform: linux/amd64
+    build:
+      context: ./client
+      dockerfile: Dockerfile
     ports:
       - "5173:5173"
     depends_on:
       - backend
     volumes:
       - ./client:/app
-      - /app/node_modules
 
   mongo:
     image: mongo:latest
-    container_name: mongo_container
     ports:
       - "27017:27017"
     volumes:
