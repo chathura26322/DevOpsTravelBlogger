@@ -6,6 +6,7 @@ pipeline {
         AWS_SECRET_ACCESS_KEY = credentials('aws-credentials')
         ACCESS_TOKEN_SECRET   = credentials('access-token-secret')
         BUILD_NUMBER          = "${env.BUILD_NUMBER}"
+        SSH_CREDENTIALS = 'ssh-agent'
     }
 
     stages {
@@ -17,12 +18,14 @@ pipeline {
             }
         }
 
-        stage('Terraform Init & Apply') {
-            steps {
-                dir('terraform') {
-                    sh 'terraform init'
-                    sh 'terraform apply -auto-approve'
-                }
+        stage('Varify local files'){
+            steps{
+                sh """ 
+                    echo "checking local files"
+                    ls -la server/Dockerfile
+                    ls -la client/Dockerfile
+                    cat server/Dockerfile
+                """
             }
         }
 
