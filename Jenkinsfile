@@ -50,98 +50,98 @@ pipeline {
             }
         }
 
-stage('Build Docker Images') {
-    steps {
-        sshagent([SSH_CREDENTIALS]) {
-            sh """
-                ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
-                cd ${BUILD_DIR}/server && sudo docker build -t ${DOCKER_IMAGE_BACKEND}:${BUILD_NUMBER} . &&
-                sudo docker tag ${DOCKER_IMAGE_BACKEND}:${BUILD_NUMBER} ${DOCKER_IMAGE_BACKEND}:latest"
-                
-                ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
-                cd ${BUILD_DIR}/client && sudo docker build -t ${DOCKER_IMAGE_FRONTEND}:${BUILD_NUMBER} . &&
-                sudo docker tag ${DOCKER_IMAGE_FRONTEND}:${BUILD_NUMBER} ${DOCKER_IMAGE_FRONTEND}:latest"
-            """
+        stage('Build Docker Images') {
+            steps {
+                sshagent([SSH_CREDENTIALS]) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
+                        cd ${BUILD_DIR}/server && sudo docker build -t ${DOCKER_IMAGE_BACKEND}:${BUILD_NUMBER} . &&
+                        sudo docker tag ${DOCKER_IMAGE_BACKEND}:${BUILD_NUMBER} ${DOCKER_IMAGE_BACKEND}:latest"
+                        
+                        ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
+                        cd ${BUILD_DIR}/client && sudo docker build -t ${DOCKER_IMAGE_FRONTEND}:${BUILD_NUMBER} . &&
+                        sudo docker tag ${DOCKER_IMAGE_FRONTEND}:${BUILD_NUMBER} ${DOCKER_IMAGE_FRONTEND}:latest"
+                    """
+                }
+            }
         }
-    }
-}
         
         stage('Push Docker Images') {
-    steps {
-        sshagent([SSH_CREDENTIALS]) {
-            withCredentials([usernamePassword(
-                credentialsId: 'dockerhub', 
-                usernameVariable: 'DOCKER_USER', 
-                passwordVariable: 'DOCKER_PASS'
-            )]) {
-                sh '''
-                    ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
-                    echo ${DOCKER_PASS} | sudo docker login -u ${DOCKER_USER} --password-stdin"
-                    
-                    ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
-                    sudo docker push ${DOCKER_IMAGE_FRONTEND}:${BUILD_NUMBER} &&
-                    sudo docker push ${DOCKER_IMAGE_BACKEND}:${BUILD_NUMBER} &&
-                    sudo docker push ${DOCKER_IMAGE_FRONTEND}:latest &&
-                    sudo docker push ${DOCKER_IMAGE_BACKEND}:latest"
-                '''
+            steps {
+                sshagent([SSH_CREDENTIALS]) {
+                    withCredentials([usernamePassword(
+                        credentialsId: 'dockerhub', 
+                        usernameVariable: 'DOCKER_USER', 
+                        passwordVariable: 'DOCKER_PASS'
+                    )]) {
+                        sh '''
+                            ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
+                            echo ${DOCKER_PASS} | sudo docker login -u ${DOCKER_USER} --password-stdin"
+                            
+                            ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
+                            sudo docker push ${DOCKER_IMAGE_FRONTEND}:${BUILD_NUMBER} &&
+                            sudo docker push ${DOCKER_IMAGE_BACKEND}:${BUILD_NUMBER} &&
+                            sudo docker push ${DOCKER_IMAGE_FRONTEND}:latest &&
+                            sudo docker push ${DOCKER_IMAGE_BACKEND}:latest"
+                        '''
+                    }
+                }
             }
         }
-    }
-}
 
         stage('Deploy to EC2') {
-    steps {
-        script {
-            // Create docker-compose.yml with proper environment variables
-            def composeFile = """
-                version: '3.8'
-                services:
-                  frontend:
-                    image: ${DOCKER_IMAGE_FRONTEND}:${BUILD_NUMBER}
-                    ports:
-                      - "80:3000"  # Changed to map to standard HTTP port
-                    restart: always
-                    networks:
-                      - app-network
-                  
-                  backend:
-                    image: ${DOCKER_IMAGE_BACKEND}:${BUILD_NUMBER}
-                    environment:
-                      - ACCESS_TOKEN_SECRET=${env.ACCESS_TOKEN_SECRET}
-                      - NODE_ENV=production
-                    ports:
-                      - "5000:5000"
-                    restart: always
-                    networks:
-                      - app-network
-                
-                networks:
-                  app-network:
-                    driver: bridge
-            """
-            
-            writeFile file: 'docker-compose.yml', text: composeFile
-            
-            sshagent([SSH_CREDENTIALS]) {
-                // Copy compose file to EC2
-                sh """
-                    scp -o StrictHostKeyChecking=no docker-compose.yml ubuntu@${DOCKER_HOST}:${BUILD_DIR}/
-                """
-                
-                // Stop any running containers, pull new images, and start
-                sh """
-                    ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
-                    cd ${BUILD_DIR} && 
-                    sudo docker-compose down &&
-                    sudo docker-compose pull && 
-                    sudo docker-compose up -d && 
-                    sudo docker ps"
-                """
+            steps {
+                script {
+                    // Create docker-compose.yml with proper environment variables
+                    def composeFile = """
+                        version: '3.8'
+                        services:
+                          frontend:
+                            image: ${DOCKER_IMAGE_FRONTEND}:${BUILD_NUMBER}
+                            ports:
+                              - "80:3000"
+                            restart: always
+                            networks:
+                              - app-network
+                          
+                          backend:
+                            image: ${DOCKER_IMAGE_BACKEND}:${BUILD_NUMBER}
+                            environment:
+                              - ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET}
+                              - NODE_ENV=production
+                            ports:
+                              - "5000:5000"
+                            restart: always
+                            networks:
+                              - app-network
+                        
+                        networks:
+                          app-network:
+                            driver: bridge
+                    """
+                    
+                    writeFile file: 'docker-compose.yml', text: composeFile
+                    
+                    sshagent([SSH_CREDENTIALS]) {
+                        // Copy compose file to EC2
+                        sh """
+                            scp -o StrictHostKeyChecking=no docker-compose.yml ubuntu@${DOCKER_HOST}:${BUILD_DIR}/
+                        """
+                        
+                        // Stop any running containers, pull new images, and start
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
+                            cd ${BUILD_DIR} && 
+                            sudo docker-compose down &&
+                            sudo docker-compose pull && 
+                            sudo docker-compose up -d && 
+                            sudo docker ps"
+                        """
+                    }
+                }
             }
         }
     }
-}
-
 
     post {
         always {
