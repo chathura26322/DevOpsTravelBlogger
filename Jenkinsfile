@@ -49,6 +49,22 @@ pipeline {
             }
         }
 
+stage('Build Docker Images') {
+    steps {
+        sshagent([SSH_CREDENTIALS]) {
+            sh """
+                ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
+                cd ${BUILD_DIR}/server && sudo docker build -t ${DOCKER_IMAGE_BACKEND}:${BUILD_NUMBER} . &&
+                sudo docker tag ${DOCKER_IMAGE_BACKEND}:${BUILD_NUMBER} ${DOCKER_IMAGE_BACKEND}:latest"
+                
+                ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
+                cd ${BUILD_DIR}/client && sudo docker build -t ${DOCKER_IMAGE_FRONTEND}:${BUILD_NUMBER} . &&
+                sudo docker tag ${DOCKER_IMAGE_FRONTEND}:${BUILD_NUMBER} ${DOCKER_IMAGE_FRONTEND}:latest"
+            """
+        }
+    }
+}
+        
         stage('Push Docker Images') {
     steps {
         sshagent([SSH_CREDENTIALS]) {
