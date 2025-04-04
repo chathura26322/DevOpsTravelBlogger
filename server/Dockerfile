@@ -26,9 +26,24 @@
 
 # # Run the backend server
 # CMD ["npm", "start"]
+# FROM node:20.14.0
+
+# # Add these lines
+# RUN apt-get update && apt-get install -y \
+#     build-essential \
+#     python3 \
+#     make \
+#     g++ \
+#     && rm -rf /var/lib/apt/lists/*
+
+# WORKDIR /app
+# COPY package*.json ./
+# RUN npm install
+# COPY . .
+# CMD ["npm", "start"]
 FROM node:20.14.0
 
-# Add these lines
+# Install build tools
 RUN apt-get update && apt-get install -y \
     build-essential \
     python3 \
@@ -38,7 +53,7 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm install --build-from-source
 COPY . .
 CMD ["npm", "start"]
 
