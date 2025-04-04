@@ -26,21 +26,20 @@ pipeline {
             }
         }
 
-        stage('Build Docker Images') {
-            steps {
-                script {
-                    try {
-                        // Build frontend
-                        sh "docker build -t chathura26322/travelblogger-frontend:${BUILD_NUMBER} ./client"
-                        
-                        // Build backend
-                        sh "docker build -t chathura26322/travelblogger-backend:${BUILD_NUMBER} ./server"
-                    } catch (Exception e) {
-                        error("Docker build failed: ${e.message}")
-                    }
-                }
-            }
+stage('Build Docker Images') {
+    steps {
+        script {
+            // Set DOCKER_HOST to your remote Docker instance
+            env.DOCKER_HOST = "tcp://65.0.178.44:2375"
+            
+            // Build frontend
+            sh "docker build -t chathura26322/travelblogger-frontend:${BUILD_NUMBER} ./client"
+            
+            // Build backend
+            sh "docker build -t chathura26322/travelblogger-backend:${BUILD_NUMBER} ./server"
         }
+    }
+}
 
 
         stage('Login to Docker Hub') {
