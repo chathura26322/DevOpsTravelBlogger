@@ -57,14 +57,14 @@ pipeline {
                         sh """
                             ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
                             cd ${BUILD_DIR} && 
-                            docker build -t ${DOCKER_REGISTRY}/travelblogger-frontend:${BUILD_NUMBER} ./client"
+                            sudo docker build -t ${DOCKER_REGISTRY}/travelblogger-frontend:${BUILD_NUMBER} ./client"
                         """
                         
                         // Build backend on remote host
                         sh """
                             ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
                             cd ${BUILD_DIR} && 
-                            docker build -t ${DOCKER_REGISTRY}/travelblogger-backend:${BUILD_NUMBER} ./server"
+                            sudo docker build -t ${DOCKER_REGISTRY}/travelblogger-backend:${BUILD_NUMBER} ./server"
                         """
                     }
                 }
