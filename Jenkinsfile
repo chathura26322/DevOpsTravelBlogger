@@ -49,26 +49,6 @@ pipeline {
             }
         }
 
-stage('Push Docker Images') {
-    steps {
-        sshagent([SSH_CREDENTIALS]) {
-            withCredentials([usernamePassword(credentialsId :'dockerhub', usernameVariable:'DOCKER_USER' , passwordVariable:'DOCKER_PASS')]) {
-                sh """
-                    echo "\${DOCKER_PASS}" | ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} \
-                    "docker login -u ${DOCKER_USER} --password-stdin"
-                    
-                    ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
-                    docker push ${DOCKER_IMAGE_FRONTEND}:${BUILD_NUMBER} &&
-                    docker push ${DOCKER_IMAGE_BACKEND}:${BUILD_NUMBER} &&
-                    docker push ${DOCKER_IMAGE_FRONTEND}:latest &&
-                    docker push ${DOCKER_IMAGE_BACKEND}:latest"
-                """
-            }
-        }
-    }
-}
-
-
         stage('Push Docker Images') {
             steps {
                 sshagent([SSH_CREDENTIALS]) {
@@ -77,16 +57,16 @@ stage('Push Docker Images') {
                         usernameVariable: 'DOCKER_USER', 
                         passwordVariable: 'DOCKER_PASS'
                     )]) {
-                        sh """
+                        sh '''
                             ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
-                            docker login -u ${DOCKER_USER} --password-stdin" < /var/lib/jenkins/workspace/${env.JOB_NAME}@tmp/secretFiles/$(ls /var/lib/jenkins/workspace/${env.JOB_NAME}@tmp/secretFiles | head -n 1)
+                            echo ${DOCKER_PASS} | docker login -u ${DOCKER_USER} --password-stdin"
                             
                             ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
                             docker push ${DOCKER_IMAGE_FRONTEND}:${BUILD_NUMBER} &&
                             docker push ${DOCKER_IMAGE_BACKEND}:${BUILD_NUMBER} &&
                             docker push ${DOCKER_IMAGE_FRONTEND}:latest &&
                             docker push ${DOCKER_IMAGE_BACKEND}:latest"
-                        """
+                        '''
                     }
                 }
             }
