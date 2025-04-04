@@ -2,15 +2,13 @@ pipeline {
     agent any
 
     environment {
-        SSH_CREDENTIALS = 'ssh-agent' // Changed to match your credentials ID
+        SSH_CREDENTIALS = 'ssh-agent'
         BUILD_NUMBER = "${env.BUILD_NUMBER}"
-        DOCKER_HOST = '65.0.178.44' // Removed 'ubuntu@' as it's not needed for DOCKER_HOST
-        BUILD_DIR = "/home/ubuntu/mern-${BUILD_ID}" // Fixed missing quote and added leading slash
+        DOCKER_HOST = '65.0.178.44'
+        BUILD_DIR = "/home/ubuntu/mern-${BUILD_ID}"
         DOCKER_REGISTRY = 'chathura26322'
-        DOCKER_IMAGE_BACKEND = 'chathura26322/server'
-        DOCKER_IMAGE_FRONTEND = 'chathura26322/client'
-
-        
+        DOCKER_IMAGE_BACKEND = "${DOCKER_REGISTRY}/travelblogger-backend"
+        DOCKER_IMAGE_FRONTEND = "${DOCKER_REGISTRY}/travelblogger-frontend"
     }
 
     stages {
@@ -19,7 +17,7 @@ pipeline {
                 retry(3) {
                     git branch: 'main', 
                     url: 'https://github.com/chathura26322/DevOpsTravelBlogger',
-                    credentialsId: 'github-credentials' // Add if using private repo
+                    credentialsId: 'github-credentials'
                 }
             }
         }
@@ -30,7 +28,6 @@ pipeline {
                     echo "Checking local files"
                     ls -la server/Dockerfile || { echo 'Server Dockerfile missing'; exit 1; }
                     ls -la client/Dockerfile || { echo 'Client Dockerfile missing'; exit 1; }
-                    cat server/Dockerfile
                 """
             }
         }
@@ -44,7 +41,6 @@ pipeline {
                         mkdir -p ${BUILD_DIR}/{client,server} && 
                         chmod -R 755 ${BUILD_DIR}"
                     """
-                    // Copy files to remote host
                     sh """
                         scp -o StrictHostKeyChecking=no -r ./client ubuntu@${DOCKER_HOST}:${BUILD_DIR}/
                         scp -o StrictHostKeyChecking=no -r ./server ubuntu@${DOCKER_HOST}:${BUILD_DIR}/
@@ -57,35 +53,40 @@ pipeline {
             steps {
                 sshagent([SSH_CREDENTIALS]) {
                     script {
-                        // Build frontend on remote host
                         sh """
                             ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
                             cd ${BUILD_DIR} && 
-                            sudo docker build -t ${DOCKER_REGISTRY}/travelblogger-frontend:${BUILD_NUMBER} ./client"
+                            sudo docker build -t ${DOCKER_IMAGE_FRONTEND}:${BUILD_NUMBER} ./client"
                         """
-                        
-                        // Build backend on remote host
                         sh """
                             ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
                             cd ${BUILD_DIR} && 
-                            sudo docker build -t ${DOCKER_REGISTRY}/travelblogger-backend:${BUILD_NUMBER} ./server"
+                            sudo docker build -t ${DOCKER_IMAGE_BACKEND}:${BUILD_NUMBER} ./server"
                         """
                     }
                 }
             }
         }
 
-
         stage('Push Docker Images') {
             steps {
                 sshagent([SSH_CREDENTIALS]) {
-                    withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    withCredentials([usernamePassword(
+                        credentialsId: 'dockerhub', 
+                        usernameVariable: 'DOCKER_USER', 
+                        passwordVariable: 'DOCKER_PASS'
+                    )]) {
                         sh """
-                            ssh -o StrictHostKeyChecking=no ${DOCKER_HOST} "
-                            echo \"${DOCKER_PASS}\" | docker login -u \"${DOCKER_USER}\" --password-stdin && 
-                            docker push ${DOCKER_IMAGE_BACKEND}:latest && 
-                            docker push ${DOCKER_IMAGE_FRONTEND}:latest"
+                            ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
+                            docker login -u ${DOCKER_USER} --password-stdin" < /var/lib/jenkins/workspace/${env.JOB_NAME}@tmp/secretFiles/$(ls /var/lib/jenkins/workspace/${env.JOB_NAME}@tmp/secretFiles | head -n 1)
+                            
+                            ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
+                            docker push ${DOCKER_IMAGE_FRONTEND}:${BUILD_NUMBER} &&
+                            docker push ${DOCKER_IMAGE_BACKEND}:${BUILD_NUMBER} &&
+                            docker push ${DOCKER_IMAGE_FRONTEND}:latest &&
+                            docker push ${DOCKER_IMAGE_BACKEND}:latest"
                         """
+                    }
                 }
             }
         }
@@ -93,18 +94,17 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 script {
-                    // Generate dynamic compose file
                     writeFile file: 'docker-compose.yml', text: """
                         version: '3.8'
                         services:
                           frontend:
-                            image: ${DOCKER_REGISTRY}/travelblogger-frontend:${BUILD_NUMBER}
+                            image: ${DOCKER_IMAGE_FRONTEND}:${BUILD_NUMBER}
                             ports:
                               - "3000:80"
                             restart: always
                           
                           backend:
-                            image: ${DOCKER_REGISTRY}/travelblogger-backend:${BUILD_NUMBER}
+                            image: ${DOCKER_IMAGE_BACKEND}:${BUILD_NUMBER}
                             environment:
                               - ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET}
                             ports:
@@ -113,12 +113,9 @@ pipeline {
                     """
                     
                     sshagent([SSH_CREDENTIALS]) {
-                        // Copy compose file to Docker host
                         sh """
                             scp -o StrictHostKeyChecking=no docker-compose.yml ubuntu@${DOCKER_HOST}:${BUILD_DIR}/
                         """
-                        
-                        // Deploy on Docker host
                         sh """
                             ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
                             cd ${BUILD_DIR} && 
@@ -140,7 +137,7 @@ pipeline {
                     docker logout || true"
                 """
             }
-            cleanWs() // Clean Jenkins workspace
+            cleanWs()
         }
         success {
             echo "Pipeline succeeded! Application deployed to ${DOCKER_HOST}"
