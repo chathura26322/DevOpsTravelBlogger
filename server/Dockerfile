@@ -16,7 +16,7 @@
 
 FROM node:20.14.0
 
-Install build tools and python
+# Install build tools and python
 RUN apt-get update && \
     apt-get install -y build-essential python3 make g++ && \
     rm -rf /var/lib/apt/lists/*
