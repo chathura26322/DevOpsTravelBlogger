@@ -13,6 +13,21 @@ pipeline {
     }
 
     stages {
+        stage('Clean Previous Deployment') {
+            steps {
+                sshagent([SSH_CREDENTIALS]) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
+                        # Remove all containers from previous deployment
+                        sudo docker-compose -f ${BUILD_DIR}/docker-compose.yml down --remove-orphans --rmi all 2>/dev/null || true
+                        
+                        # Remove old build directory if exists
+                        rm -rf ${BUILD_DIR}"
+                    """
+                }
+            }
+        }
+
         stage('SCM Checkout') {
             steps {
                 retry(3) {
@@ -38,7 +53,6 @@ pipeline {
                 sshagent([SSH_CREDENTIALS]) {
                     sh """
                         ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
-                        rm -rf ${BUILD_DIR} && 
                         mkdir -p ${BUILD_DIR}/{client,server} && 
                         chmod -R 755 ${BUILD_DIR}"
                     """
@@ -92,7 +106,6 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 script {
-                    // Create docker-compose.yml with proper environment variables
                     def composeFile = """
                         version: '3.8'
                         services:
@@ -101,8 +114,6 @@ pipeline {
                             ports:
                               - "80:3000"
                             restart: always
-                            networks:
-                              - app-network
                           
                           backend:
                             image: ${DOCKER_IMAGE_BACKEND}:${BUILD_NUMBER}
@@ -112,30 +123,18 @@ pipeline {
                             ports:
                               - "5000:5000"
                             restart: always
-                            networks:
-                              - app-network
-                        
-                        networks:
-                          app-network:
-                            driver: bridge
                     """
                     
                     writeFile file: 'docker-compose.yml', text: composeFile
                     
                     sshagent([SSH_CREDENTIALS]) {
-                        // Copy compose file to EC2
                         sh """
                             scp -o StrictHostKeyChecking=no docker-compose.yml ubuntu@${DOCKER_HOST}:${BUILD_DIR}/
                         """
-                        
-                        // Stop any running containers, pull new images, and start
                         sh """
                             ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
                             cd ${BUILD_DIR} && 
-                            sudo docker-compose down &&
-                            sudo docker-compose pull && 
-                            sudo docker-compose up -d && 
-                            sudo docker ps"
+                            sudo docker-compose up -d"
                         """
                     }
                 }
