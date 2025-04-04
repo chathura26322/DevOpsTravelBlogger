@@ -50,27 +50,27 @@ pipeline {
         }
 
         stage('Push Docker Images') {
-            steps {
-                sshagent([SSH_CREDENTIALS]) {
-                    withCredentials([usernamePassword(
-                        credentialsId: 'dockerhub', 
-                        usernameVariable: 'DOCKER_USER', 
-                        passwordVariable: 'DOCKER_PASS'
-                    )]) {
-                        sh '''
-                            ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
-                            echo ${DOCKER_PASS} | docker login -u ${DOCKER_USER} --password-stdin"
-                            
-                            ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
-                            docker push ${DOCKER_IMAGE_FRONTEND}:${BUILD_NUMBER} &&
-                            docker push ${DOCKER_IMAGE_BACKEND}:${BUILD_NUMBER} &&
-                            docker push ${DOCKER_IMAGE_FRONTEND}:latest &&
-                            docker push ${DOCKER_IMAGE_BACKEND}:latest"
-                        '''
-                    }
-                }
+    steps {
+        sshagent([SSH_CREDENTIALS]) {
+            withCredentials([usernamePassword(
+                credentialsId: 'dockerhub', 
+                usernameVariable: 'DOCKER_USER', 
+                passwordVariable: 'DOCKER_PASS'
+            )]) {
+                sh '''
+                    ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
+                    echo ${DOCKER_PASS} | sudo docker login -u ${DOCKER_USER} --password-stdin"
+                    
+                    ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
+                    sudo docker push ${DOCKER_IMAGE_FRONTEND}:${BUILD_NUMBER} &&
+                    sudo docker push ${DOCKER_IMAGE_BACKEND}:${BUILD_NUMBER} &&
+                    sudo docker push ${DOCKER_IMAGE_FRONTEND}:latest &&
+                    sudo docker push ${DOCKER_IMAGE_BACKEND}:latest"
+                '''
             }
         }
+    }
+}
 
         stage('Deploy to EC2') {
             steps {
