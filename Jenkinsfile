@@ -9,6 +9,7 @@ pipeline {
         DOCKER_REGISTRY = 'chathura26322'
         DOCKER_IMAGE_BACKEND = "${DOCKER_REGISTRY}/travelblogger-backend"
         DOCKER_IMAGE_FRONTEND = "${DOCKER_REGISTRY}/travelblogger-frontend"
+        ACCESS_TOKEN_SECRET = "1f775dedc439323121b94836b9cb691f97793bb86a5c8d73030e158e57e68743886caef772ed3254945fd92d11fb218fa63df3cc753d06210c092daa1acb8286"
     }
 
     stages {
@@ -89,42 +90,58 @@ stage('Build Docker Images') {
 }
 
         stage('Deploy to EC2') {
-            steps {
-                script {
-                    writeFile file: 'docker-compose.yml', text: """
-                        version: '3.8'
-                        services:
-                          frontend:
-                            image: ${DOCKER_IMAGE_FRONTEND}:${BUILD_NUMBER}
-                            ports:
-                              - "3000:80"
-                            restart: always
-                          
-                          backend:
-                            image: ${DOCKER_IMAGE_BACKEND}:${BUILD_NUMBER}
-                            environment:
-                              - ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET}
-                            ports:
-                              - "5000:5000"
-                            restart: always
-                    """
-                    
-                    sshagent([SSH_CREDENTIALS]) {
-                        sh """
-                            scp -o StrictHostKeyChecking=no docker-compose.yml ubuntu@${DOCKER_HOST}:${BUILD_DIR}/
-                        """
-                        sh """
-                            ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
-                            cd ${BUILD_DIR} && 
-                            docker-compose down && 
-                            docker-compose up -d && 
-                            docker ps"
-                        """
-                    }
-                }
+    steps {
+        script {
+            // Create docker-compose.yml with proper environment variables
+            def composeFile = """
+                version: '3.8'
+                services:
+                  frontend:
+                    image: ${DOCKER_IMAGE_FRONTEND}:${BUILD_NUMBER}
+                    ports:
+                      - "80:3000"  # Changed to map to standard HTTP port
+                    restart: always
+                    networks:
+                      - app-network
+                  
+                  backend:
+                    image: ${DOCKER_IMAGE_BACKEND}:${BUILD_NUMBER}
+                    environment:
+                      - ACCESS_TOKEN_SECRET=${env.ACCESS_TOKEN_SECRET}
+                      - NODE_ENV=production
+                    ports:
+                      - "5000:5000"
+                    restart: always
+                    networks:
+                      - app-network
+                
+                networks:
+                  app-network:
+                    driver: bridge
+            """
+            
+            writeFile file: 'docker-compose.yml', text: composeFile
+            
+            sshagent([SSH_CREDENTIALS]) {
+                // Copy compose file to EC2
+                sh """
+                    scp -o StrictHostKeyChecking=no docker-compose.yml ubuntu@${DOCKER_HOST}:${BUILD_DIR}/
+                """
+                
+                // Stop any running containers, pull new images, and start
+                sh """
+                    ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
+                    cd ${BUILD_DIR} && 
+                    sudo docker-compose down &&
+                    sudo docker-compose pull && 
+                    sudo docker-compose up -d && 
+                    sudo docker ps"
+                """
             }
         }
     }
+}
+
 
     post {
         always {
