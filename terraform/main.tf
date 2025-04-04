@@ -1,9 +1,9 @@
 provider "aws" {
-  region = "ap-south-1"
+  region = "ap-south-1"  # Mumbai region
 }
 
 resource "aws_instance" "mern_app" {
-  ami           = "ami-002f6e91abff6eb96" # Amazon Linux 2 (update if deprecated)
+  ami           = "ami-002f6e91abff6eb96"  # Amazon Linux 2 for ap-south-1
   instance_type = "t2.micro"
   key_name      = "mern-keypair"
   security_groups = [aws_security_group.mern_sg.name]

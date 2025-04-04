@@ -5,6 +5,7 @@ pipeline {
         AWS_ACCESS_KEY_ID     = credentials('aws-credentials')
         AWS_SECRET_ACCESS_KEY = credentials('aws-credentials')
         ACCESS_TOKEN_SECRET   = credentials('access-token-secret')
+        BUILD_NUMBER          = "${env.BUILD_NUMBER}"
     }
 
     stages {
@@ -27,8 +28,8 @@ pipeline {
 
         stage('Build Docker Images') {
             steps {
-                sh "docker build -t chathura26322/travelblogger-frontend:${env.BUILD_NUMBER} ./client"
-                sh "docker build -t chathura26322/travelblogger-backend:${env.BUILD_NUMBER} ./server"
+                sh "docker build -t chathura26322/travelblogger-frontend:${BUILD_NUMBER} ./client"
+                sh "docker build -t chathura26322/travelblogger-backend:${BUILD_NUMBER} ./server"
             }
         }
 
@@ -46,8 +47,8 @@ pipeline {
 
         stage('Push Docker Images') {
             steps {
-                sh "docker push chathura26322/travelblogger-frontend:${env.BUILD_NUMBER}"
-                sh "docker push chathura26322/travelblogger-backend:${env.BUILD_NUMBER}"
+                sh "docker push chathura26322/travelblogger-frontend:${BUILD_NUMBER}"
+                sh "docker push chathura26322/travelblogger-backend:${BUILD_NUMBER}"
             }
         }
 
@@ -55,15 +56,12 @@ pipeline {
             steps {
                 script {
                     def ec2_ip = sh(script: "cd terraform && terraform output -raw instance_public_ip", returnStdout: true).trim()
-                    sh "ssh -o StrictHostKeyChecking=no -i ~/Downloads/mern-keypair.pem ec2-user@${ec2_ip} 'mkdir -p ~/app'"
-                    sh "scp -i ~/Downloads/mern-keypair.pem docker-compose.yml ec2-user@${ec2_ip}:~/app/"
-                    sh "scp -i ~/Downloads/mern-keypair.pem -r client ec2-user@${ec2_ip}:~/app/"
-                    sh "scp -i ~/Downloads/mern-keypair.pem -r server ec2-user@${ec2_ip}:~/app/"
+                    sh "scp -i ~/Downloads/mern-keypair.pem docker-compose.yml ec2-user@${ec2_ip}:~/"
                     sh """
-                        ssh -i ~/Downloads/mern-keypair.pem ec2-user@${ec2_ip} << 'EOF'
-                        cd ~/app
+                        ssh -o StrictHostKeyChecking=no -i ~/Downloads/mern-keypair.pem ec2-user@${ec2_ip} << 'EOF'
+                        export BUILD_NUMBER=${BUILD_NUMBER}
                         export ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET}
-                        /usr/local/bin/docker-compose up -d
+                        /usr/local/bin/docker-compose -f ~/docker-compose.yml up -d
                         EOF
                     """
                 }
@@ -73,7 +71,7 @@ pipeline {
 
     post {
         always {
-            sh 'docker logout'
+            sh 'docker logout || true'  # Avoid pipeline failure if logout fails
         }
         failure {
             echo 'Pipeline failed!'
