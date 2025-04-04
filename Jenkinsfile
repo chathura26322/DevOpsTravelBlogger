@@ -52,11 +52,7 @@ pipeline {
 stage('Push Docker Images') {
     steps {
         sshagent([SSH_CREDENTIALS]) {
-            withCredentials([usernamePassword(
-                credentialsId: 'dockerhub', 
-                usernameVariable: 'DOCKER_USER', 
-                passwordVariable: 'DOCKER_PASS'
-            )]) {
+            withCredentials([usernamePassword(credentialsId :'dockerhub', usernameVariable:'DOCKER_USER' , passwordVariable:'DOCKER_PASS')]) {
                 sh """
                     echo "\${DOCKER_PASS}" | ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} \
                     "docker login -u ${DOCKER_USER} --password-stdin"
