@@ -3,6 +3,7 @@ pipeline {
 
     environment {
         SSH_CREDENTIALS = 'ssh-agent'
+        BUILD_NUMBER = "${env.BUILD_NUMBER}"
     }
 
     stages {
@@ -27,12 +28,20 @@ pipeline {
 
         stage('Build Docker Images') {
             steps {
-                sshagent([SSH_CREDENTIALS]){
-                 sh "docker build -t chathura26322/travelblogger-frontend:${BUILD_NUMBER} ./client"
-                 sh "docker build -t chathura26322/travelblogger-backend:${BUILD_NUMBER} ./server"   
+                script {
+                    try {
+                        // Build frontend
+                        sh "docker build -t chathura26322/travelblogger-frontend:${BUILD_NUMBER} ./client"
+                        
+                        // Build backend
+                        sh "docker build -t chathura26322/travelblogger-backend:${BUILD_NUMBER} ./server"
+                    } catch (Exception e) {
+                        error("Docker build failed: ${e.message}")
+                    }
                 }
             }
         }
+
 
         stage('Login to Docker Hub') {
             steps {
