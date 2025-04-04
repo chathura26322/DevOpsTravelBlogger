@@ -14,9 +14,9 @@
 # COPY . .
 # CMD ["npm", "start"]
 
-FROM node:20-alpine
+FROM node:20.14.0
 
-# Install build tools and python
+Install build tools and python
 RUN apt-get update && \
     apt-get install -y build-essential python3 make g++ && \
     rm -rf /var/lib/apt/lists/*
@@ -27,7 +27,8 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies with build tools
-RUN npm install --build-from-source
+RUN npm install 
+#--build-from-source
 
 # Copy application code
 COPY . .
