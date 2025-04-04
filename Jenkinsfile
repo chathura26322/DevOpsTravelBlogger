@@ -7,6 +7,10 @@ pipeline {
         DOCKER_HOST = '65.0.178.44' // Removed 'ubuntu@' as it's not needed for DOCKER_HOST
         BUILD_DIR = "/home/ubuntu/mern-${BUILD_ID}" // Fixed missing quote and added leading slash
         DOCKER_REGISTRY = 'chathura26322'
+        DOCKER_IMAGE_BACKEND = 'chathura26322/server'
+        DOCKER_IMAGE_FRONTEND = 'chathura26322/client'
+
+        
     }
 
     stages {
@@ -71,31 +75,17 @@ pipeline {
             }
         }
 
-        stage('Login to Docker Hub') {
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'docker-hub',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
-                    sshagent([SSH_CREDENTIALS]) {
-                        sh """
-                            ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
-                            docker login -u ${DOCKER_USER} -p ${DOCKER_PASS}"
-                        """
-                    }
-                }
-            }
-        }
 
         stage('Push Docker Images') {
             steps {
                 sshagent([SSH_CREDENTIALS]) {
-                    sh """
-                        ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
-                        docker push ${DOCKER_REGISTRY}/travelblogger-frontend:${BUILD_NUMBER} && 
-                        docker push ${DOCKER_REGISTRY}/travelblogger-backend:${BUILD_NUMBER}"
-                    """
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ${DOCKER_HOST} "
+                            echo \"${DOCKER_PASS}\" | docker login -u \"${DOCKER_USER}\" --password-stdin && 
+                            docker push ${DOCKER_IMAGE_BACKEND}:latest && 
+                            docker push ${DOCKER_IMAGE_FRONTEND}:latest"
+                        """
                 }
             }
         }
