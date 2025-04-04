@@ -69,49 +69,90 @@
 
 # volumes:
 #   mongo-data:
+# version: '3.8'
+
+# services:
+#   backend:
+#     build:
+#       context: ./server
+#       dockerfile: Dockerfile
+#     image: chathura26322/travelblogger-backend:${BUILD_NUMBER}
+#     container_name: travelblogger-backend
+#     ports:
+#       - "5000:5000"
+#     environment:
+#       - MONGO_URI=mongodb://mongo:27017/travelblogger
+#       - ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET}
+#     depends_on:
+#       mongo:
+#         condition: service_healthy
+#     healthcheck:
+#       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+#       interval: 30s
+#       timeout: 10s
+#       retries: 3
+
+#   frontend:
+#     image: chathura26322/travelblogger-frontend:${BUILD_NUMBER}
+#     container_name: travelblogger-frontend
+#     ports:
+#       - "80:3000"
+#     depends_on:
+#       - backend
+
+#   mongo:
+#     image: mongo:latest
+#     container_name: mongo
+#     ports:
+#       - "27017:27017"
+#     volumes:
+#       - mongo-data:/data/db
+#     healthcheck:
+#       test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+#       interval: 30s
+#       timeout: 10s
+#       retries: 3
+
+# volumes:
+#   mongo-data:
 version: '3.8'
 
 services:
-  backend:
-    build:
-      context: ./server
-      dockerfile: Dockerfile
-    image: chathura26322/travelblogger-backend:${BUILD_NUMBER}
-    container_name: travelblogger-backend
-    ports:
-      - "5000:5000"
-    environment:
-      - MONGO_URI=mongodb://mongo:27017/travelblogger
-      - ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET}
-    depends_on:
-      mongo:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  frontend:
-    image: chathura26322/travelblogger-frontend:${BUILD_NUMBER}
-    container_name: travelblogger-frontend
-    ports:
-      - "80:3000"
-    depends_on:
-      - backend
-
   mongo:
-    image: mongo:latest
-    container_name: mongo
+    image: mongo:6.0
+    container_name: travelblogger-mongo
+    restart: always
     ports:
       - "27017:27017"
     volumes:
       - mongo-data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: yoursecurepassword
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/admin --quiet -u admin -p yoursecurepassword
       interval: 30s
       timeout: 10s
       retries: 3
+
+  backend:
+    image: your-backend-image
+    container_name: travelblogger-backend
+    environment:
+      - ACCESS_TOKEN_SECRET=your_jwt_secret
+      - MONGO_URI=mongodb://admin:yoursecurepassword@mongo:27017/travelblogger?authSource=admin
+    ports:
+      - "5000:5000"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  frontend:
+    image: your-frontend-image
+    ports:
+      - "80:3000"
+    depends_on:
+      - backend
 
 volumes:
   mongo-data:
