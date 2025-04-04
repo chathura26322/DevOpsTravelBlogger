@@ -4,6 +4,8 @@ pipeline {
     environment {
         SSH_CREDENTIALS = 'ssh-agent'
         BUILD_NUMBER = "${env.BUILD_NUMBER}"
+        DOCKER_HOST = 'ubuntu@65.0.178.44'
+        BUILD_DIR = 'home/ubuntu/mern-${BUILD_ID}
     }
 
     stages {
@@ -26,6 +28,20 @@ pipeline {
             }
         }
 
+        stage('Prepare Remote Host') {
+            steps {
+                sshagent([SSH_CREDENTIALS]) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${DOCKER_HOST} "
+                        rm -rf ${BUILD_DIR} && 
+                        mkdir -p ${BUILD_DIR}/{client,server} && 
+                        chmod -R 755 ${BUILD_DIR}"
+                    """
+                }
+            }
+        }
+
+        
 stage('Build Docker Images') {
     steps {
         script {
