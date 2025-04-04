@@ -71,7 +71,7 @@ pipeline {
 
     post {
         always {
-            sh 'docker logout || true'  # Avoid pipeline failure if logout fails
+            sh 'docker logout || true'  // Avoid pipeline failure if logout fails
         }
         failure {
             echo 'Pipeline failed!'
