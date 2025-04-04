@@ -60,7 +60,9 @@
 # ENV NODE_ENV=production
 
 # CMD ["npm", "start"]
-FROM node:20.14.0-bullseye  # Use Debian-based image
+
+# Start with Debian-based Node image
+FROM node:20.14.0-bullseye
 
 # Install essential build tools
 RUN apt-get update && \
@@ -71,16 +73,18 @@ RUN apt-get update && \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
+# Set working directory
 WORKDIR /app
 
 # Copy package files first
 COPY package*.json ./
 
-# Clean install dependencies with build-from-source
-RUN npm ci --build-from-source
+# Install dependencies with build-from-source
+RUN npm install --build-from-source
 
 # Copy application code
 COPY . .
 
+# Start command
 CMD ["npm", "start"]
 
