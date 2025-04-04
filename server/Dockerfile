@@ -1,3 +1,4 @@
+
 # # Use official Node.js image
 # FROM node:20.14.0
 
@@ -35,7 +36,7 @@ WORKDIR /app
 # Copy package.json and package-lock.json
 COPY package*.json ./
 
-
+RUN npm install
 
 # Copy the rest of the backend files
 COPY . .
