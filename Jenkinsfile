@@ -114,88 +114,165 @@ pipeline {
                 }
             }
         }
-
         stage('Deploy to EC2') {
-            steps {
-                script {
-                    // Generate secure MongoDB password
-                    def mongoPassword = sh(script: 'openssl rand -hex 12', returnStdout: true).trim()
-                    
-                    def composeFile = """
-                        version: '3.8'
-                        services:
-                          mongo:
-                            image: mongo:6.0
-                            container_name: travelblogger-mongo
-                            restart: always
-                            ports:
-                              - "27017:27017"
-                            volumes:
-                              - mongo-data:/data/db
-                            environment:
-                              MONGO_INITDB_ROOT_USERNAME: admin
-                              MONGO_INITDB_ROOT_PASSWORD: ${mongoPassword}
-                            healthcheck:
-                              test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/admin --quiet -u admin -p ${mongoPassword}
-                              interval: 30s
-                              timeout: 10s
-                              retries: 3
+    steps {
+        script {
+            def composeFile = """
+                version: '3.8'
+                services:
+                  mongo:
+                    image: mongo:6.0
+                    container_name: travelblogger-mongo
+                    restart: always
+                    ports:
+                      - "27017:27017"
+                    volumes:
+                      - mongo-data:/data/db
+                    environment:
+                      MONGO_INITDB_ROOT_USERNAME: rootadmin
+                      MONGO_INITDB_ROOT_PASSWORD: newsecurepass123
+                    healthcheck:
+                      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/admin --quiet -u rootadmin -p newsecurepass123
+                      interval: 30s
+                      timeout: 10s
+                      retries: 3
 
-                          frontend:
-                            image: ${DOCKER_IMAGE_FRONTEND}:${BUILD_NUMBER}
-                            container_name: travelblogger-frontend
-                            ports:
-                              - "80:3000"
-                            restart: always
-                            depends_on:
-                              - backend
-                            healthcheck:
-                              test: ["CMD", "curl", "-f", "http://localhost:3000"]
-                              interval: 30s
-                              timeout: 10s
-                              retries: 3
-                          
-                          backend:
-                            image: ${DOCKER_IMAGE_BACKEND}:${BUILD_NUMBER}
-                            container_name: travelblogger-backend
-                            environment:
-                              - ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET}
-                              - NODE_ENV=production
-                              - MONGO_URI=mongodb://admin:${mongoPassword}@mongo:27017/travelblogger?authSource=admin
-                            ports:
-                              - "5000:5000"
-                            restart: always
-                            depends_on:
-                              mongo:
-                                condition: service_healthy
-                            healthcheck:
-                              test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
-                              interval: 30s
-                              timeout: 10s
-                              retries: 3
+                  frontend:
+                    image: ${DOCKER_IMAGE_FRONTEND}:${BUILD_NUMBER}
+                    container_name: travelblogger-frontend
+                    ports:
+                      - "80:3000"
+                    restart: always
+                    depends_on:
+                      - backend
+                    healthcheck:
+                      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+                      interval: 30s
+                      timeout: 10s
+                      retries: 3
+                  
+                  backend:
+                    image: ${DOCKER_IMAGE_BACKEND}:${BUILD_NUMBER}
+                    container_name: travelblogger-backend
+                    environment:
+                      - ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET}
+                      - NODE_ENV=production
+                    ports:
+                      - "8000:8000"  # Match your app's port
+                    restart: always
+                    depends_on:
+                      mongo:
+                        condition: service_healthy
+                    healthcheck:
+                      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+                      interval: 30s
+                      timeout: 10s
+                      retries: 3
 
-                        volumes:
-                          mongo-data:
-                    """
-                    
-                    writeFile file: 'docker-compose.yml', text: composeFile
-                    
-                    sshagent([SSH_CREDENTIALS]) {
-                        sh """
-                            scp -o StrictHostKeyChecking=no docker-compose.yml ubuntu@${DOCKER_HOST}:${BUILD_DIR}/
-                        """
-                        sh """
-                            ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
-                            cd ${BUILD_DIR} && 
-                            export COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME}
-                            sudo docker-compose down --remove-orphans
-                            sudo docker-compose up -d --force-recreate
-                            sudo docker ps -a"
-                        """
-                    }
-                }
+                volumes:
+                  mongo-data:
+            """
+            
+            writeFile file: 'docker-compose.yml', text: composeFile
+            
+            sshagent([SSH_CREDENTIALS]) {
+                sh """
+                    scp -o StrictHostKeyChecking=no docker-compose.yml ubuntu@${DOCKER_HOST}:${BUILD_DIR}/
+                """
+                sh """
+                    ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
+                    cd ${BUILD_DIR} && 
+                    export COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME}
+                    sudo docker-compose down --remove-orphans
+                    sudo docker-compose up -d --force-recreate
+                    sudo docker ps -a"
+                """
             }
         }
+    }
+}
+
+        // stage('Deploy to EC2') {
+        //     steps {
+        //         script {
+        //             // Generate secure MongoDB password
+        //             def mongoPassword = sh(script: 'openssl rand -hex 12', returnStdout: true).trim()
+                    
+        //             def composeFile = """
+        //                 version: '3.8'
+        //                 services:
+        //                   mongo:
+        //                     image: mongo:6.0
+        //                     container_name: travelblogger-mongo
+        //                     restart: always
+        //                     ports:
+        //                       - "27017:27017"
+        //                     volumes:
+        //                       - mongo-data:/data/db
+        //                     environment:
+        //                       MONGO_INITDB_ROOT_USERNAME: admin
+        //                       MONGO_INITDB_ROOT_PASSWORD: ${mongoPassword}
+        //                     healthcheck:
+        //                       test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/admin --quiet -u admin -p ${mongoPassword}
+        //                       interval: 30s
+        //                       timeout: 10s
+        //                       retries: 3
+
+        //                   frontend:
+        //                     image: ${DOCKER_IMAGE_FRONTEND}:${BUILD_NUMBER}
+        //                     container_name: travelblogger-frontend
+        //                     ports:
+        //                       - "80:3000"
+        //                     restart: always
+        //                     depends_on:
+        //                       - backend
+        //                     healthcheck:
+        //                       test: ["CMD", "curl", "-f", "http://localhost:3000"]
+        //                       interval: 30s
+        //                       timeout: 10s
+        //                       retries: 3
+                          
+        //                   backend:
+        //                     image: ${DOCKER_IMAGE_BACKEND}:${BUILD_NUMBER}
+        //                     container_name: travelblogger-backend
+        //                     environment:
+        //                       - ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET}
+        //                       - NODE_ENV=production
+        //                       - MONGO_URI=mongodb://admin:${mongoPassword}@mongo:27017/travelblogger?authSource=admin
+        //                     ports:
+        //                       - "5000:5000"
+        //                     restart: always
+        //                     depends_on:
+        //                       mongo:
+        //                         condition: service_healthy
+        //                     healthcheck:
+        //                       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+        //                       interval: 30s
+        //                       timeout: 10s
+        //                       retries: 3
+
+        //                 volumes:
+        //                   mongo-data:
+        //             """
+                    
+        //             writeFile file: 'docker-compose.yml', text: composeFile
+                    
+        //             sshagent([SSH_CREDENTIALS]) {
+        //                 sh """
+        //                     scp -o StrictHostKeyChecking=no docker-compose.yml ubuntu@${DOCKER_HOST}:${BUILD_DIR}/
+        //                 """
+        //                 sh """
+        //                     ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
+        //                     cd ${BUILD_DIR} && 
+        //                     export COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME}
+        //                     sudo docker-compose down --remove-orphans
+        //                     sudo docker-compose up -d --force-recreate
+        //                     sudo docker ps -a"
+        //                 """
+        //             }
+        //         }
+        //     }
+        // }
 
         stage('Verify Deployment') {
             steps {
