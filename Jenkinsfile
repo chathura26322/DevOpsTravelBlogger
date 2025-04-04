@@ -49,24 +49,29 @@ pipeline {
             }
         }
 
-        stage('Build Docker Images') {
-            steps {
-                sshagent([SSH_CREDENTIALS]) {
-                    script {
-                        sh """
-                            ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
-                            cd ${BUILD_DIR} && 
-                            sudo docker build -t ${DOCKER_IMAGE_FRONTEND}:${BUILD_NUMBER} ./client"
-                        """
-                        sh """
-                            ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
-                            cd ${BUILD_DIR} && 
-                            sudo docker build -t ${DOCKER_IMAGE_BACKEND}:${BUILD_NUMBER} ./server"
-                        """
-                    }
-                }
+stage('Push Docker Images') {
+    steps {
+        sshagent([SSH_CREDENTIALS]) {
+            withCredentials([usernamePassword(
+                credentialsId: 'dockerhub', 
+                usernameVariable: 'DOCKER_USER', 
+                passwordVariable: 'DOCKER_PASS'
+            )]) {
+                sh """
+                    ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
+                    docker login -u ${DOCKER_USER} --password-stdin" < /var/lib/jenkins/workspace/${env.JOB_NAME}@tmp/secretFiles/\\\$(ls /var/lib/jenkins/workspace/${env.JOB_NAME}@tmp/secretFiles | head -n 1)
+
+                    ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
+                    docker push ${DOCKER_IMAGE_FRONTEND}:${BUILD_NUMBER} &&
+                    docker push ${DOCKER_IMAGE_BACKEND}:${BUILD_NUMBER} &&
+                    docker push ${DOCKER_IMAGE_FRONTEND}:latest &&
+                    docker push ${DOCKER_IMAGE_BACKEND}:latest"
+                """
             }
         }
+    }
+}
+
 
         stage('Push Docker Images') {
             steps {
