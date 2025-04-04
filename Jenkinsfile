@@ -104,43 +104,40 @@ pipeline {
         }
 
         stage('Deploy to EC2') {
-            steps {
-                script {
-                    def composeFile = """
-                        version: '3.8'
-                        services:
-                          frontend:
-                            image: ${DOCKER_IMAGE_FRONTEND}:${BUILD_NUMBER}
-                            ports:
-                              - "80:3000"
-                            restart: always
-                          
-                          backend:
-                            image: ${DOCKER_IMAGE_BACKEND}:${BUILD_NUMBER}
-                            environment:
-                              - ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET}
-                              - NODE_ENV=production
-                            ports:
-                              - "5000:5000"
-                            restart: always
-                    """
-                    
-                    writeFile file: 'docker-compose.yml', text: composeFile
-                    
-                    sshagent([SSH_CREDENTIALS]) {
-                        sh """
-                            scp -o StrictHostKeyChecking=no docker-compose.yml ubuntu@${DOCKER_HOST}:${BUILD_DIR}/
-                        """
-                        sh """
-                            ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
-                            cd ${BUILD_DIR} && 
-                            sudo docker-compose up -d"
-                        """
-                    }
-                }
+    steps {
+        script {
+            writeFile file: 'docker-compose.yml', text: """
+                version: '3.8'
+                services:
+                  frontend:
+                    image: ${DOCKER_IMAGE_FRONTEND}:${BUILD_NUMBER}
+                    ports:
+                      - "80:3000"
+                    restart: always
+                  
+                  backend:
+                    image: ${DOCKER_IMAGE_BACKEND}:${BUILD_NUMBER}
+                    environment:
+                      - ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET}
+                    ports:
+                      - "5000:5000"
+                    restart: always
+            """
+            
+            sshagent([SSH_CREDENTIALS]) {
+                sh """
+                    scp -o StrictHostKeyChecking=no docker-compose.yml ubuntu@${DOCKER_HOST}:${BUILD_DIR}/
+                """
+                sh """
+                    ssh -o StrictHostKeyChecking=no ubuntu@${DOCKER_HOST} "
+                    cd ${BUILD_DIR} && 
+                    sudo docker-compose down --remove-orphans &&  # Critical cleanup
+                    sudo docker-compose up -d"
+                """
             }
         }
     }
+}
 
     post {
         always {
