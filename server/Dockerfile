@@ -27,8 +27,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies with build tools
-RUN npm install 
-#--build-from-source
+RUN npm install --build-from-source
 
 # Copy application code
 COPY . .
