@@ -127,8 +127,8 @@ services:
     volumes:
       - mongo-data:/data/db
     environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: yoursecurepassword
+      MONGO_INITDB_ROOT_USERNAME: rootadmin
+      MONGO_INITDB_ROOT_PASSWORD: newsecurepass123
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/admin --quiet -u admin -p yoursecurepassword
       interval: 30s
