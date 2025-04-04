@@ -61,31 +61,48 @@
 
 # CMD ["npm", "start"]
 
-# Use official Node image with build tools
-FROM node:20.14.0-bullseye
+# # Use official Node image with build tools
+# FROM node:20.14.0-bullseye
 
-# Install essential build dependencies
-RUN apt-get update && \
-    apt-get install -y \
-    build-essential \
-    python3 \
-    make \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
+# # Install essential build dependencies
+# RUN apt-get update && \
+#     apt-get install -y \
+#     build-essential \
+#     python3 \
+#     make \
+#     g++ \
+#     && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
+# # Set working directory
+# WORKDIR /app
+
+# # Copy package files first
+# COPY package*.json ./
+
+# # Clean install with build-from-source
+# RUN npm ci --build-from-source
+
+# # Copy application code
+# COPY . .
+
+# # Runtime environment
+# ENV NODE_ENV=production
+
+# CMD ["npm", "start"]
+FROM node:20.14.0
+
 WORKDIR /app
 
-# Copy package files first
+# Copy package files first for better caching
 COPY package*.json ./
 
-# Clean install with build-from-source
-RUN npm ci --build-from-source
+# Install dependencies
+RUN npm install
 
 # Copy application code
 COPY . .
 
-# Runtime environment
+# Set production environment
 ENV NODE_ENV=production
 
 CMD ["npm", "start"]
