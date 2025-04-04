@@ -27,8 +27,10 @@ pipeline {
 
         stage('Build Docker Images') {
             steps {
-                sh "docker build -t chathura26322/travelblogger-frontend:${BUILD_NUMBER} ./client"
-                sh "docker build -t chathura26322/travelblogger-backend:${BUILD_NUMBER} ./server"
+                sshagent([SSH_CREDENTIALS]){
+                 sh "docker build -t chathura26322/travelblogger-frontend:${BUILD_NUMBER} ./client"
+                 sh "docker build -t chathura26322/travelblogger-backend:${BUILD_NUMBER} ./server"   
+                }
             }
         }
 
