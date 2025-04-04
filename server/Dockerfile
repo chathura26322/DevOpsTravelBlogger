@@ -13,14 +13,15 @@ WORKDIR /app
 # Copy package.json and package-lock.json
 COPY package*.json ./
 
-# Install dependencies (including bcrypt)
+# Force rebuild of bcrypt for the current architecture
 RUN npm install
+RUN npm rebuild bcrypt --build-from-source
 
 # Copy the rest of the backend files
 COPY . .
 
-# Expose port 8000
-EXPOSE 8000
+# Expose port (make sure this matches the port in docker-compose.yml)
+EXPOSE 5000
 
 # Run the backend server
 CMD ["npm", "start"]
