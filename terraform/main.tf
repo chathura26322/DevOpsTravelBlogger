@@ -24,7 +24,7 @@ resource "aws_instance" "mern_app" {
 }
 
 resource "aws_security_group" "mern_sg" {
-  name        = "mern-app-sg"
+  name        = "mern-app-sg-${formatdate("YYYYMMDDHHMMSS", timestamp())}"
   description = "Allow traffic for MERN app"
 
   ingress {
