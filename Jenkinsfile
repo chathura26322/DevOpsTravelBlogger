@@ -11,8 +11,25 @@ pipeline {
         DOCKER_IMAGE_FRONTEND = "${DOCKER_REGISTRY}/travelblogger-frontend"
         ACCESS_TOKEN_SECRET = "1f775dedc439323121b94836b9cb691f97793bb86a5c8d73030e158e57e68743886caef772ed3254945fd92d11fb218fa63df3cc753d06210c092daa1acb8286"
         COMPOSE_PROJECT_NAME = "travelblogger"
+        TF_STATE_DIR = "./terraform" 
     }
-
+    stages {
+        // NEW STAGE ADDED AT BEGINNING (won't affect existing flow)
+        stage('Terraform Init') {
+            when {
+                expression { 
+                    // Only run if terraform files exist
+                    return fileExists("${TF_STATE_DIR}/index.tf") 
+                }
+            }
+            steps {
+                dir(TF_STATE_DIR) {
+                    sh 'terraform init -input=false'
+                    sh 'terraform validate'
+                    echo "Terraform initialized (dry-run only - no changes made)"
+                }
+            }
+        }
     stages {
         stage('Nuclear Cleanup') {
             steps {
