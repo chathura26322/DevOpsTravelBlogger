@@ -13,7 +13,8 @@ pipeline {
         COMPOSE_PROJECT_NAME = "travelblogger"
         TF_STATE_DIR = "./terraform" 
     }
-   stage('Terraform Init') {
+    stages {
+        stage('Terraform Init') {
     steps {
         echo "1. Starting mock Terraform initialization"
         echo "2. This is a placeholder stage for future use"
@@ -27,7 +28,6 @@ pipeline {
         echo "10. Proceeding to Nuclear Cleanup stage..."
     }
 }
-    stages {
         stage('Nuclear Cleanup') {
             steps {
                 sshagent([SSH_CREDENTIALS]) {
