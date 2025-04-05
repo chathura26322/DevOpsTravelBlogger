@@ -13,23 +13,20 @@ pipeline {
         COMPOSE_PROJECT_NAME = "travelblogger"
         TF_STATE_DIR = "./terraform" 
     }
-    // stages {
-    //     // NEW STAGE ADDED AT BEGINNING (won't affect existing flow)
-    //     stage('Terraform Init') {
-    //         when {
-    //             expression { 
-    //                 // Only run if terraform files exist
-    //                 return fileExists("${TF_STATE_DIR}/index.tf") 
-    //             }
-    //         }
-    //         steps {
-    //             dir(TF_STATE_DIR) {
-    //                 sh 'terraform init -input=false'
-    //                 sh 'terraform validate'
-    //                 echo "Terraform initialized (dry-run only - no changes made)"
-    //             }
-    //         }
-    //     }
+   stage('Terraform Init') {
+    steps {
+        echo "1. Starting mock Terraform initialization"
+        echo "2. This is a placeholder stage for future use"
+        echo "3. No actual Terraform operations are performed"
+        echo "4. The pipeline will continue normally"
+        echo "5. This stage is safe to ignore"
+        echo "6. All existing deployment steps remain unchanged"
+        echo "7. Backend services will deploy as usual"
+        echo "8. MongoDB connection will be established"
+        echo "9. Frontend/backend containers will start"
+        echo "10. Proceeding to Nuclear Cleanup stage..."
+    }
+}
     stages {
         stage('Nuclear Cleanup') {
             steps {
