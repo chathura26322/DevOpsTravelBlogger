@@ -13,23 +13,23 @@ pipeline {
         COMPOSE_PROJECT_NAME = "travelblogger"
         TF_STATE_DIR = "./terraform" 
     }
-    stages {
-        // NEW STAGE ADDED AT BEGINNING (won't affect existing flow)
-        stage('Terraform Init') {
-            when {
-                expression { 
-                    // Only run if terraform files exist
-                    return fileExists("${TF_STATE_DIR}/index.tf") 
-                }
-            }
-            steps {
-                dir(TF_STATE_DIR) {
-                    sh 'terraform init -input=false'
-                    sh 'terraform validate'
-                    echo "Terraform initialized (dry-run only - no changes made)"
-                }
-            }
-        }
+    // stages {
+    //     // NEW STAGE ADDED AT BEGINNING (won't affect existing flow)
+    //     stage('Terraform Init') {
+    //         when {
+    //             expression { 
+    //                 // Only run if terraform files exist
+    //                 return fileExists("${TF_STATE_DIR}/index.tf") 
+    //             }
+    //         }
+    //         steps {
+    //             dir(TF_STATE_DIR) {
+    //                 sh 'terraform init -input=false'
+    //                 sh 'terraform validate'
+    //                 echo "Terraform initialized (dry-run only - no changes made)"
+    //             }
+    //         }
+    //     }
     stages {
         stage('Nuclear Cleanup') {
             steps {
